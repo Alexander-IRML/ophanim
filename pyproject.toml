@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ophanim"
+version = "0.1.0"
+description = "Experimental regional TEC forecasting and disturbance detection"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Alexander-IRML/ophanim"
+Changelog = "https://github.com/Alexander-IRML/ophanim/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Alexander-IRML/ophanim/issues"
+
+[project.optional-dependencies]
+data = [
+    "numpy>=2.0,<3",
+    "psycopg[binary,pool]>=3.2,<4",
+    "zarr>=3.1,<4",
+]
+spatial = [
+    "numpy>=2.0,<3",
+    "torch>=2.5,<3",
+]
+
+[project.scripts]
+ophanim-desktop = "ophanim.desktop:main"
+ophanim-data = "ophanim.data_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ophanim = [
+    "sql/postgres/*.sql",
+    "web/*.html",
+    "web/*.css",
+    "web/*.js",
+    "web/*.svg",
+]

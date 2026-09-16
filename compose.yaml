@@ -1,0 +1,126 @@
+name: ophanim
+
+x-ophanim-build: &ophanim-build
+  context: .
+  dockerfile: Dockerfile
+  args:
+    APP_UID: "${APP_UID:-1000}"
+    APP_GID: "${APP_GID:-1000}"
+
+x-data-environment: &data-environment
+  PGHOST: postgres
+  PGPORT: "5432"
+  PGDATABASE: "${POSTGRES_DB:-ophanim}"
+  PGUSER: "${POSTGRES_USER:-ophanim}"
+  PGPASSWORD: "${POSTGRES_PASSWORD:-ophanim-local-only}"
+  OPHANIM_ZARR_ROOT: /var/lib/ophanim-zarr
+
+services:
+  postgres:
+    image: postgres:18.6-bookworm
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-ophanim}"
+      POSTGRES_USER: "${POSTGRES_USER:-ophanim}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-ophanim-local-only}"
+      POSTGRES_INITDB_ARGS: --data-checksums
+    volumes:
+      - ophanim-postgres:/var/lib/postgresql
+    networks:
+      - data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready --username="$${POSTGRES_USER}"
+          --dbname="$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 1m
+    shm_size: 256mb
+
+  migrate:
+    image: "${OPHANIM_IMAGE:-ophanim:0.1.0}"
+    build: *ophanim-build
+    entrypoint:
+      - ophanim-data
+    command:
+      - init
+    environment: *data-environment
+    volumes:
+      - ophanim-zarr:/var/lib/ophanim-zarr
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  app:
+    image: "${OPHANIM_IMAGE:-ophanim:0.1.0}"
+    build: *ophanim-build
+    command:
+      - --bind-address
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --data-dir
+      - /var/lib/ophanim
+      - --no-browser
+    environment:
+      <<: *data-environment
+      OPHANIM_BULK_ARCHIVE: "1"
+    volumes:
+      - ./var/desktop:/var/lib/ophanim
+      - ophanim-zarr:/var/lib/ophanim-zarr
+    ports:
+      - "127.0.0.1:${OPHANIM_PORT:-8765}:8765"
+    networks:
+      - data
+      - egress
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen(
+          'http://127.0.0.1:8765/api/health', timeout=2).close()
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: "on-failure:3"
+    stop_grace_period: 30s
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  ophanim-postgres:
+  ophanim-zarr:
+
+networks:
+  data:
+    internal: true
+  egress:

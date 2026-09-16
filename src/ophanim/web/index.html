@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#17243c">
+    <meta name="ophanim-token" content="__OPHANIM_TOKEN__">
+    <title>OPHANIM · Ionospheric forecast workspace</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to workspace</a>
+
+    <header class="app-header">
+      <a class="brand" href="/" aria-label="OPHANIM home">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span class="brand-copy">
+          <strong>OPHANIM</strong>
+          <small>IONOSPHERIC FORECAST LAB</small>
+        </span>
+      </a>
+
+      <div class="header-actions">
+        <p class="connection" id="connection-status">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="connection-label">Connecting…</span>
+        </p>
+        <button class="button button-quiet button-small" id="stop-button" type="button">
+          <span aria-hidden="true">■</span>
+          Stop application
+        </button>
+      </div>
+    </header>
+
+    <main id="main-content" class="workspace">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Local experiment</p>
+          <h1 id="page-title">Forecast regional TEC,<br>without losing the evidence.</h1>
+        </div>
+        <p class="intro-copy">
+          Download a CODE GIM—or bring a local IONEX file—then run the baseline
+          persistence forecast. Every result stays tied to its source and versions.
+        </p>
+      </section>
+
+      <nav class="steps" aria-label="Workflow progress">
+        <div class="step is-active" id="step-source" aria-current="step">
+          <span class="step-number">01</span>
+          <span><strong>Source map</strong><small>Fetch &amp; aggregate</small></span>
+        </div>
+        <span class="step-rule" aria-hidden="true"></span>
+        <div class="step" id="step-forecast">
+          <span class="step-number">02</span>
+          <span><strong>Forecast</strong><small>Choose &amp; run</small></span>
+        </div>
+        <span class="step-rule" aria-hidden="true"></span>
+        <div class="step" id="step-result">
+          <span class="step-number">03</span>
+          <span><strong>Result</strong><small>Score &amp; assess</small></span>
+        </div>
+      </nav>
+
+      <section class="panel" id="source-panel" aria-labelledby="source-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="section-number">01 / SOURCE</p>
+            <h2 id="source-heading">Get a source map</h2>
+          </div>
+          <p>Download a CODE GIM automatically, or use an IONEX file already on this laptop.</p>
+        </div>
+
+        <form id="load-form" novalidate>
+          <div class="source-mode-tabs" role="tablist" aria-label="Source method">
+            <button
+              class="source-mode-tab"
+              id="source-mode-automatic"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="automatic-source-panel"
+            >
+              <span aria-hidden="true">↓</span>
+              Download CODE GIM
+            </button>
+            <button
+              class="source-mode-tab"
+              id="source-mode-local"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="local-source-panel"
+              tabindex="-1"
+            >
+              <span aria-hidden="true">＋</span>
+              Use local file
+            </button>
+          </div>
+
+          <section
+            class="source-tabpanel"
+            id="automatic-source-panel"
+            role="tabpanel"
+            aria-labelledby="source-mode-automatic"
+          >
+            <div class="source-grid">
+              <div class="remote-source-card">
+                <span class="remote-symbol" aria-hidden="true">◎</span>
+                <p class="source-kicker">Automatic HTTPS source</p>
+                <h3>CODE Global Ionosphere Map</h3>
+                <p>
+                  A global VTEC grid produced by the Center for Orbit
+                  Determination in Europe and downloaded directly by OPHANIM.
+                  Each typically two-hour snapshot has one TEC value per 5° × 2.5° cell.
+                </p>
+                <span class="source-disclosure">Single-center GIM · not IGS combined</span>
+              </div>
+
+              <div class="source-fields download-fields">
+                <div class="field-pair">
+                  <label class="field">
+                    <span>Edition</span>
+                    <select id="gim-edition" name="gim_edition" required>
+                      <option value="rapid" selected>Rapid</option>
+                      <option value="final">Final</option>
+                    </select>
+                    <small id="edition-detail">Usually available sooner after the observation day.</small>
+                  </label>
+                  <label class="field">
+                    <span>Exact UTC date</span>
+                    <input id="gim-date" name="gim_date" type="date" min="2002-01-01">
+                    <small>Optional. Leave blank for the latest available complete day.</small>
+                  </label>
+                </div>
+
+                <div class="download-note">
+                  <span aria-hidden="true">↧</span>
+                  <p>
+                    OPHANIM will locate the daily compressed IONEX file
+                    (<code>.gz</code> or legacy <code>.Z</code>), verify and store its
+                    source bytes, then build the regional epochs below.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="source-tabpanel"
+            id="local-source-panel"
+            role="tabpanel"
+            aria-labelledby="source-mode-local"
+            hidden
+          >
+            <div class="source-grid">
+              <div class="file-column">
+                <label class="file-drop" id="file-drop" for="source-file">
+                  <input
+                    id="source-file"
+                    name="source_file"
+                    type="file"
+                    accept=".ionex,.inx,.i,.gz,.Z,.z,application/gzip,application/x-compress,text/plain"
+                    disabled
+                  >
+                  <span class="file-symbol" aria-hidden="true">＋</span>
+                  <span id="file-title"><strong>Choose an IONEX file</strong></span>
+                  <span id="file-detail">or drop one here · plain text, gzip, or legacy .Z</span>
+                </label>
+                <p class="field-hint">The file never leaves this laptop.</p>
+              </div>
+
+              <div class="source-fields">
+                <div class="field-pair">
+                  <label class="field">
+                    <span>Provider</span>
+                    <input id="provider" name="provider" value="igs" autocomplete="off" required disabled>
+                  </label>
+                  <label class="field">
+                    <span>Product</span>
+                    <input id="product" name="product" value="gim" autocomplete="off" required disabled>
+                  </label>
+                </div>
+
+                <div class="local-source-note">
+                  <strong>Manual provenance</strong>
+                  <span>Use the provider and product printed by your source archive.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="region-settings">
+            <div class="settings-heading">
+              <div>
+                <strong>Regional crop</strong>
+                <span>Applied after either source method.</span>
+              </div>
+              <span>Central Texas default</span>
+            </div>
+
+            <fieldset class="bounds">
+              <legend class="visually-hidden">Central Texas bounds</legend>
+              <div class="bounds-grid">
+                <label class="field compact">
+                  <span>North</span>
+                  <input id="north" name="north_latitude_degrees" type="number" value="32.5" min="-90" max="90" step="0.1" required>
+                </label>
+                <label class="field compact">
+                  <span>West</span>
+                  <input id="west" name="west_longitude_degrees" type="number" value="-100.5" min="-180" max="180" step="0.1" required>
+                </label>
+                <label class="field compact">
+                  <span>South</span>
+                  <input id="south" name="south_latitude_degrees" type="number" value="29.0" min="-90" max="90" step="0.1" required>
+                </label>
+                <label class="field compact">
+                  <span>East</span>
+                  <input id="east" name="east_longitude_degrees" type="number" value="-96.0" min="-180" max="179.999999" step="0.1" required>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced source settings</summary>
+            <div class="advanced-grid">
+              <label class="field">
+                <span>Expected regional cells</span>
+                <input id="expected-cells" name="expected_cell_count" type="number" min="1" step="1" inputmode="numeric" placeholder="Infer from map">
+                <small>Used to calculate coverage quality.</small>
+              </label>
+
+              <label class="field local-only-setting" id="revision-field" hidden>
+                <span>Source revision</span>
+                <input id="revision" name="revision" autocomplete="off" placeholder="Optional label" disabled>
+                <small>For example, rapid or final.</small>
+              </label>
+              <label class="field local-only-setting" id="revision-priority-field" hidden>
+                <span>Revision priority</span>
+                <input id="revision-priority" name="revision_priority" type="number" min="0" max="1000000" step="1" value="0" inputmode="numeric" disabled>
+                <small>Higher priorities supersede lower ones.</small>
+              </label>
+            </div>
+          </details>
+
+          <div class="form-footer">
+            <p id="load-note">Latest uses the newest complete UTC day available.</p>
+            <button class="button button-primary" id="load-button" type="submit">
+              <span class="button-label">Download &amp; inspect GIM</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="loaded-summary" id="loaded-summary" hidden>
+          <span class="summary-check" aria-hidden="true">✓</span>
+          <div>
+            <strong id="loaded-name">IONEX map loaded</strong>
+            <p id="loaded-detail"></p>
+          </div>
+          <button class="text-button" id="replace-file" type="button">Choose another source</button>
+        </div>
+      </section>
+
+      <section
+        class="panel regional-panel"
+        id="regional-panel"
+        aria-labelledby="regional-heading"
+        hidden
+      >
+        <div class="panel-heading regional-heading">
+          <div>
+            <p class="section-number">CORE MAP</p>
+            <h2 id="regional-heading">0.5° × 0.5° regional readout</h2>
+          </div>
+          <p>Build the standard working grid for the selected region and source epoch.</p>
+        </div>
+
+        <div class="regional-disclosure" role="note" aria-label="Interpolation disclosure">
+          <span aria-hidden="true">≈</span>
+          <div>
+            <strong>The core map is interpolated—not newly measured</strong>
+            <p>
+              OPHANIM keeps the source GIM at its native resolution, then uses bilinear
+              interpolation to estimate the 0.5° grid. This makes local gradients easier
+              to inspect without adding independent observations.
+            </p>
+          </div>
+        </div>
+
+        <form id="regional-grid-form" novalidate>
+          <div class="regional-controls">
+            <label class="field field-large">
+              <span>Source epoch</span>
+              <select id="regional-epoch" name="observed_at" required></select>
+              <small>One map epoch from the loaded source.</small>
+            </label>
+
+            <label class="field">
+              <span>Output grid</span>
+              <select id="regional-resolution" name="grid_step_degrees">
+                <option value="0.5" selected>0.5° × 0.5° — Core</option>
+                <option value="1">1° × 1° — Coarser</option>
+                <option value="0.25">0.25° × 0.25° — Experimental</option>
+              </select>
+              <small>0.5° is the standard output; every added point is an estimate.</small>
+            </label>
+
+            <button class="button button-primary regional-generate" id="regional-grid-button" type="submit">
+              <span class="button-label">Generate readout</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+          <p class="regional-grid-status" id="regional-grid-status" role="status" aria-live="polite">
+            Select an epoch and build the core 0.5° × 0.5° map.
+          </p>
+        </form>
+
+        <div class="regional-result" id="regional-result" hidden>
+          <div class="regional-result-heading">
+            <div>
+              <div class="regional-result-title-line">
+                <strong id="regional-result-title">Regional grid</strong>
+                <span class="regional-stale-badge" id="regional-stale-badge" hidden>Stale</span>
+              </div>
+              <p id="regional-result-detail"></p>
+            </div>
+            <button class="button button-secondary button-small" id="regional-csv-button" type="button">
+              ↓&nbsp; Download CSV
+            </button>
+          </div>
+
+          <div class="grid-provenance" aria-label="Grid resolution provenance">
+            <div class="grid-provenance-stage">
+              <span>Native source</span>
+              <strong id="regional-native-resolution">Source grid</strong>
+              <small>Original GIM cells</small>
+            </div>
+            <div class="grid-provenance-flow">
+              <span aria-hidden="true">→</span>
+              <small id="regional-interpolation-method">Bilinear interpolation</small>
+            </div>
+            <div class="grid-provenance-stage is-output">
+              <span id="regional-output-label">Core output</span>
+              <strong id="regional-output-resolution">0.5° lon × 0.5° lat</strong>
+              <small id="regional-output-kind">Interpolated estimates</small>
+            </div>
+          </div>
+
+          <div
+            class="regional-table-scroll"
+            id="regional-table-scroll"
+            role="region"
+            aria-labelledby="regional-result-title"
+            tabindex="0"
+          >
+            <table class="regional-table">
+              <caption class="visually-hidden">
+                Bilinearly interpolated vertical total electron content for the selected region and epoch
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Latitude (°)</th>
+                  <th scope="col">Longitude (°)</th>
+                  <th scope="col">Estimated VTEC (TECU)</th>
+                </tr>
+              </thead>
+              <tbody id="regional-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="panel mamba-panel"
+        id="mamba-panel"
+        aria-labelledby="mamba-heading"
+      >
+        <div class="panel-heading mamba-heading">
+          <div>
+            <p class="section-number">EXPERIMENTAL MONITOR</p>
+            <h2 id="mamba-heading">Mamba abnormality monitor</h2>
+          </div>
+          <p>Learn the normal regional pattern, then check every new readout since the last successful scan.</p>
+        </div>
+
+        <div class="mamba-disclosure" role="note" aria-label="Experimental result disclosure">
+          <span aria-hidden="true">M</span>
+          <div>
+            <strong>Candidate finder—not a disturbance confirmation</strong>
+            <p>
+              Mamba marks readouts whose pattern differs from its historical baseline.
+              A candidate can reflect unusual ionospheric behavior, source changes, missing
+              data, or model error and always needs review.
+            </p>
+          </div>
+        </div>
+
+        <div class="mamba-monitor" id="mamba-monitor">
+          <div class="mamba-status-line">
+            <div>
+              <span class="badge neutral" id="mamba-status-badge">Checking</span>
+              <h3 id="mamba-status-title">Checking the local pipeline…</h3>
+              <p id="mamba-status-copy">
+                Looking for a saved model and any readouts waiting to be checked.
+              </p>
+            </div>
+            <button class="button button-primary mamba-action" id="mamba-action-button" type="button" disabled>
+              <span class="button-label">Checking status…</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+
+          <dl class="mamba-facts" aria-label="Mamba model and scan status">
+            <div>
+              <dt>Baseline region</dt>
+              <dd id="mamba-region-detail">Central Texas regional crop</dd>
+            </div>
+            <div>
+              <dt>Model</dt>
+              <dd id="mamba-model-detail">Not initialized</dd>
+            </div>
+            <div>
+              <dt>Training history</dt>
+              <dd id="mamba-training-detail">20 years requested</dd>
+            </div>
+            <div>
+              <dt>Last successful check</dt>
+              <dd id="mamba-last-check">Never</dd>
+            </div>
+          </dl>
+
+          <div class="mamba-progress-wrap" id="mamba-progress-wrap" hidden>
+            <div class="mamba-progress-copy">
+              <strong id="mamba-progress-label">Preparing…</strong>
+              <span id="mamba-progress-count">Starting the job</span>
+            </div>
+            <progress id="mamba-progress" max="100" aria-labelledby="mamba-progress-label"></progress>
+          </div>
+
+          <p class="mamba-monitor-note" id="mamba-monitor-note" role="status" aria-live="polite">
+            This monitor runs locally and keeps its model, cursor, and results on this laptop.
+          </p>
+          <p
+            class="visually-hidden"
+            id="mamba-live-summary"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></p>
+        </div>
+
+        <div class="mamba-result" id="mamba-result" hidden>
+          <div class="mamba-result-heading">
+            <div>
+              <p class="section-number">LATEST SUCCESSFUL CHECK</p>
+              <h3 id="mamba-result-title">No scan has finished yet</h3>
+              <p id="mamba-result-detail"></p>
+            </div>
+            <span class="badge success" id="mamba-result-badge">Complete</span>
+          </div>
+
+          <dl class="mamba-result-metrics" aria-label="Latest scan summary">
+            <div><dt>Readouts checked</dt><dd id="mamba-readout-count">0</dd></div>
+            <div><dt>Usable readouts</dt><dd id="mamba-usable-count">0</dd></div>
+            <div><dt>Candidate readouts</dt><dd id="mamba-candidate-count">0</dd></div>
+            <div><dt>Highest score</dt><dd id="mamba-max-score">—</dd></div>
+          </dl>
+
+          <p class="mamba-empty" id="mamba-candidate-empty">
+            No candidate readouts were reported in this scan.
+          </p>
+
+          <div
+            class="mamba-table-scroll"
+            id="mamba-table-scroll"
+            role="region"
+            aria-labelledby="mamba-result-title"
+            tabindex="0"
+            hidden
+          >
+            <table class="mamba-table">
+              <caption class="visually-hidden">
+                Candidate abnormality readouts from the latest successful Mamba scan
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Observed</th>
+                  <th scope="col">Baseline region</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Residual</th>
+                  <th scope="col">Contributing native cells</th>
+                  <th scope="col">Assessment</th>
+                </tr>
+              </thead>
+              <tbody id="mamba-candidate-body"></tbody>
+            </table>
+          </div>
+
+          <details class="mamba-provenance">
+            <summary>Model and scan provenance</summary>
+            <dl id="mamba-provenance-list"></dl>
+          </details>
+        </div>
+      </section>
+
+      <section
+        class="panel mamba-panel spatial-panel"
+        id="spatial-panel"
+        aria-labelledby="spatial-heading"
+      >
+        <div class="panel-heading mamba-heading">
+          <div>
+            <p class="section-number">SPATIAL BASELINE</p>
+            <h2 id="spatial-heading">Predictive ConvLSTM monitor</h2>
+          </div>
+          <p>Predict the next native CODE map, preserve its residual map, and compare its candidates with Mamba.</p>
+        </div>
+
+        <div class="mamba-disclosure spatial-disclosure" role="note" aria-label="Spatial baseline method disclosure">
+          <span aria-hidden="true">2D</span>
+          <div>
+            <strong>Causal next-map prediction—not same-map reconstruction</strong>
+            <p>
+              The CNN–ConvLSTM sees only earlier native-grid frames when it predicts the
+              next map. Large residual cells or clusters are review candidates, not
+              confirmed disturbances; source changes, missing data, and model error can
+              also produce them.
+            </p>
+          </div>
+        </div>
+
+        <div class="spatial-method" aria-label="Spatial baseline data flow">
+          <div><span>Input</span><strong>12 earlier native maps</strong><small>24-hour causal context</small></div>
+          <span aria-hidden="true">→</span>
+          <div><span>Prediction</span><strong>Next native CODE map</strong><small>Two-hour horizon</small></div>
+          <span aria-hidden="true">→</span>
+          <div><span>Evidence</span><strong>Residual map &amp; clusters</strong><small>Calibrated candidates</small></div>
+        </div>
+
+        <div class="mamba-monitor" id="spatial-monitor">
+          <div class="mamba-status-line">
+            <div>
+              <span class="badge neutral" id="spatial-status-badge">Checking</span>
+              <h3 id="spatial-status-title">Checking the spatial pipeline…</h3>
+              <p id="spatial-status-copy">
+                Looking for a saved ConvLSTM model and any native maps waiting to be checked.
+              </p>
+            </div>
+            <button class="button button-primary mamba-action" id="spatial-action-button" type="button" disabled>
+              <span class="button-label">Checking status…</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+
+          <dl class="mamba-facts" aria-label="ConvLSTM model and scan status">
+            <div>
+              <dt>Baseline region</dt>
+              <dd id="spatial-region-detail">Central Texas regional crop</dd>
+            </div>
+            <div>
+              <dt>Model</dt>
+              <dd id="spatial-model-detail">Not trained</dd>
+            </div>
+            <div>
+              <dt>Training history</dt>
+              <dd id="spatial-training-detail">20 years requested</dd>
+            </div>
+            <div>
+              <dt>Last successful check</dt>
+              <dd id="spatial-last-check">Never</dd>
+            </div>
+          </dl>
+
+          <div class="mamba-progress-wrap" id="spatial-progress-wrap" hidden>
+            <div class="mamba-progress-copy">
+              <strong id="spatial-progress-label">Preparing…</strong>
+              <span id="spatial-progress-count">Starting the job</span>
+            </div>
+            <progress id="spatial-progress" max="100" aria-labelledby="spatial-progress-label"></progress>
+          </div>
+
+          <p class="mamba-monitor-note" id="spatial-monitor-note" role="status" aria-live="polite">
+            Training and checks run locally; model artifacts, cursors, and residual evidence stay on this laptop.
+          </p>
+          <p
+            class="visually-hidden"
+            id="spatial-live-summary"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></p>
+        </div>
+
+        <div class="mamba-result" id="spatial-result" hidden>
+          <div class="mamba-result-heading">
+            <div>
+              <p class="section-number">LATEST SUCCESSFUL SPATIAL CHECK</p>
+              <h3 id="spatial-result-title">No spatial check has finished yet</h3>
+              <p id="spatial-result-detail"></p>
+            </div>
+            <span class="badge success" id="spatial-result-badge">Complete</span>
+          </div>
+
+          <dl class="mamba-result-metrics" aria-label="Latest spatial scan summary">
+            <div><dt>Maps checked</dt><dd id="spatial-map-count">0</dd></div>
+            <div><dt>Scorable maps</dt><dd id="spatial-usable-count">0</dd></div>
+            <div><dt>Candidate maps</dt><dd id="spatial-candidate-count">0</dd></div>
+            <div><dt>Highest score</dt><dd id="spatial-max-score">—</dd></div>
+          </dl>
+
+          <aside class="spatial-comparison" id="spatial-comparison" aria-labelledby="spatial-comparison-heading" hidden>
+            <span aria-hidden="true">⇄</span>
+            <div>
+              <strong id="spatial-comparison-heading">Mamba comparison</strong>
+              <p id="spatial-comparison-copy"></p>
+            </div>
+          </aside>
+
+          <p class="mamba-empty" id="spatial-candidate-empty">
+            No residual-map candidates were reported in this check.
+          </p>
+
+          <div
+            class="mamba-table-scroll"
+            id="spatial-table-scroll"
+            role="region"
+            aria-labelledby="spatial-result-title"
+            tabindex="0"
+            hidden
+          >
+            <table class="mamba-table spatial-table">
+              <caption class="visually-hidden">
+                Residual-map candidates from the latest successful predictive ConvLSTM check
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Observed</th>
+                  <th scope="col">Peak native cell</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Peak residual</th>
+                  <th scope="col">Cluster cells</th>
+                  <th scope="col">Mamba</th>
+                </tr>
+              </thead>
+              <tbody id="spatial-candidate-body"></tbody>
+            </table>
+          </div>
+
+          <details class="mamba-provenance">
+            <summary>Spatial model and check provenance</summary>
+            <dl id="spatial-provenance-list"></dl>
+          </details>
+        </div>
+      </section>
+
+      <section class="panel forecast-panel" id="forecast-panel" aria-labelledby="forecast-heading" hidden>
+        <div class="panel-heading">
+          <div>
+            <p class="section-number">02 / FORECAST</p>
+            <h2 id="forecast-heading">Set the forecast</h2>
+          </div>
+          <p id="epoch-count">Choose from the epochs found in your map.</p>
+        </div>
+
+        <form id="forecast-form" novalidate>
+          <div class="forecast-grid">
+            <label class="field field-large">
+              <span>Forecast origin</span>
+              <select id="origin" name="forecast_origin" required></select>
+              <small id="valid-time">The target time will appear here.</small>
+            </label>
+
+            <label class="field">
+              <span>Regional measure</span>
+              <select id="target-metric" name="target_metric">
+                <option value="median_vtec" selected>Median VTEC</option>
+                <option value="mean_vtec">Mean VTEC</option>
+              </select>
+              <small>Median is less sensitive to extreme cells.</small>
+            </label>
+
+            <label class="field">
+              <span>Horizon</span>
+              <select id="horizon" name="forecast_horizon_hours">
+                <option value="1">1 hour</option>
+                <option value="2" selected>2 hours</option>
+                <option value="4">4 hours</option>
+                <option value="6">6 hours</option>
+                <option value="12">12 hours</option>
+                <option value="24">24 hours</option>
+              </select>
+              <small>Prediction time after the selected origin.</small>
+            </label>
+
+            <label class="field">
+              <span>Run mode</span>
+              <select id="forecast-mode" name="mode">
+                <option value="hindcast" selected>Hindcast experiment</option>
+                <option value="live">Live forecast</option>
+              </select>
+              <small id="mode-explanation">Can use observations loaded after their epoch.</small>
+            </label>
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced detector calibration</summary>
+            <p class="advanced-note">
+              Structural experiment defaults only—not a scientific calibration.
+            </p>
+            <div class="advanced-grid detector-grid">
+              <label class="field">
+                <span>Residual mean (TECU)</span>
+                <input id="calibration-mean" type="number" value="0" step="any" required>
+              </label>
+              <label class="field">
+                <span>Residual std. dev. (TECU)</span>
+                <input id="calibration-std" type="number" value="1" min="0.000001" step="any" required>
+              </label>
+              <label class="field">
+                <span>Sample count</span>
+                <input id="calibration-count" type="number" value="2" min="2" max="2147483647" step="1" required>
+              </label>
+              <label class="field">
+                <span>Anomaly threshold (|z|)</span>
+                <input id="detector-threshold" type="number" value="3" min="0.000001" step="any" required>
+              </label>
+            </div>
+          </details>
+
+          <div class="form-footer forecast-footer">
+            <p>Baseline model · latest regional value persists to the target time.</p>
+            <button class="button button-primary" id="forecast-button" type="submit">
+              <span class="button-label">Run forecast</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="results" id="results" aria-labelledby="results-heading" hidden>
+        <div class="results-heading">
+          <div>
+            <p class="section-number">03 / RESULT</p>
+            <h2 id="results-heading">Forecast result</h2>
+          </div>
+          <button class="button button-secondary" id="reconcile-button" type="button">
+            ↻&nbsp; Check pending
+          </button>
+        </div>
+
+        <div class="result-hero">
+          <div class="prediction-block">
+            <p>Predicted regional TEC</p>
+            <strong><span id="predicted-value">—</span> <small>TECU</small></strong>
+            <span id="prediction-caption">Persistence forecast</span>
+          </div>
+          <dl class="forecast-times">
+            <div><dt>Origin</dt><dd id="result-origin">—</dd></div>
+            <div><dt>Valid at</dt><dd id="result-valid">—</dd></div>
+            <div><dt>Status</dt><dd><span class="badge neutral" id="forecast-status">Pending</span></dd></div>
+          </dl>
+        </div>
+
+        <div class="assessment-grid">
+          <article class="assessment-card anomaly-card">
+            <div class="assessment-title">
+              <span class="assessment-icon" aria-hidden="true">Δ</span>
+              <div><p>Forecast anomaly</p><h3 id="anomaly-heading">Awaiting actual</h3></div>
+            </div>
+            <p id="anomaly-copy">
+              The forecast can be scored when an observation exists at its valid time.
+            </p>
+            <dl class="metric-row">
+              <div><dt>Residual</dt><dd id="residual-value">—</dd></div>
+              <div><dt>Anomaly score</dt><dd id="anomaly-score">—</dd></div>
+              <div><dt>Threshold</dt><dd id="anomaly-threshold">—</dd></div>
+            </dl>
+          </article>
+
+          <article class="assessment-card disturbance-card">
+            <div class="assessment-title">
+              <span class="assessment-icon" aria-hidden="true">◉</span>
+              <div><p>Disturbance assessment</p><h3 id="disturbance-heading">Unknown</h3></div>
+            </div>
+            <p id="disturbance-copy">
+              No physical disturbance claim has been made. This assessment is distinct
+              from whether the forecast missed.
+            </p>
+            <div class="separation-note">
+              <strong>Why these are separate</strong>
+              <span>A poor forecast can occur without a real ionospheric disturbance.</span>
+            </div>
+          </article>
+        </div>
+
+        <details class="provenance" id="provenance">
+          <summary>
+            <span><strong>Provenance &amp; versions</strong><small>Trace this result back to its inputs</small></span>
+            <span aria-hidden="true">＋</span>
+          </summary>
+          <dl id="provenance-list"></dl>
+        </details>
+      </section>
+
+      <footer class="page-footer">
+        <span>OPHANIM v0 · Local experimental software</span>
+        <span>Processing, stored data, and results remain on this laptop</span>
+      </footer>
+    </main>
+
+    <div class="notice" id="notice" role="status" aria-live="polite" aria-atomic="true" hidden>
+      <span class="notice-icon" aria-hidden="true"></span>
+      <span id="notice-message"></span>
+      <button id="notice-close" type="button" aria-label="Dismiss message">×</button>
+    </div>
+
+    <dialog id="stop-dialog" aria-labelledby="stop-title">
+      <form method="dialog">
+        <span class="dialog-mark" aria-hidden="true">■</span>
+        <h2 id="stop-title">Stop OPHANIM?</h2>
+        <p>This shuts down the local application. Your database and source files stay saved.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel">Keep running</button>
+          <button class="button button-danger" id="confirm-stop" value="default">Stop application</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="stopped-screen" id="stopped-screen" hidden>
+      <div>
+        <span class="stopped-mark" aria-hidden="true">✓</span>
+        <p class="eyebrow">Application stopped</p>
+        <h2>Your work is saved.</h2>
+        <p>You can close this window and launch OPHANIM again whenever you are ready.</p>
+      </div>
+    </div>
+  </body>
+</html>
