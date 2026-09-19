@@ -1,0 +1,19 @@
+# Artistic recipe for the manual, west-facing photograph demonstration.
+name: sunset_ghost_sheet
+seed: 42
+render_spacing_km: 10
+shell_altitude_km: 300
+sheet:
+  vertical_exaggeration: 4.0
+  base_opacity: 0.4
+  quiet_opacity_floor: 0.025
+  boundary_feather_km: 150
+emission:
+  gain: 2.5
+flow:
+  lic_strength: 0.7
+  streamline_length: 25
+wave:
+  displacement_strength: 0.35
+uncertainty:
+  breakup_strength: 0.5

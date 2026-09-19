@@ -599,7 +599,7 @@ class SpatialMonitor:
                 self._run_initialize(job_id)
             else:
                 self._run_scan(job_id)
-        except _SpatialInterrupted:
+        except (_SpatialInterrupted, InterruptedError):
             self._mark_interrupted(job_id)
         except Exception as error:
             self._mark_failed(job_id, error)
@@ -618,15 +618,17 @@ class SpatialMonitor:
             self._assert_running()
             self._update_job(job_id, phase, completed, total, message)
 
-        result = self._backend.train(
-            snapshot=snapshot,
-            archive=self._archive,
-            region=region,
-            options={"epochs": pipeline["requested_epochs"]},
-            checkpoint_path=checkpoint,
-            progress=progress,
-            interrupted=self._stop.is_set,
-        )
+        from ophanim.core.jobs import heavy_work
+        with heavy_work(self._directory, self._stop.is_set):
+            result = self._backend.train(
+                snapshot=snapshot,
+                archive=self._archive,
+                region=region,
+                options={"epochs": pipeline["requested_epochs"]},
+                checkpoint_path=checkpoint,
+                progress=progress,
+                interrupted=self._stop.is_set,
+            )
         _validate_training_result(result)
         if result.training_window_count < self._minimum_training_windows:
             raise SpatialMonitorUnavailable(
@@ -785,16 +787,18 @@ class SpatialMonitor:
                 ),
             )
             connection.commit()
-        result = self._backend.scan(
-            model_content=model_content,
-            model_metadata=dict(model_row),
-            snapshot=snapshot,
-            archive=self._archive,
-            after_source_cursor=pipeline["scan_cursor"],
-            region=_region_from_row(pipeline),
-            progress=progress,
-            interrupted=self._stop.is_set,
-        )
+        from ophanim.core.jobs import heavy_work
+        with heavy_work(self._directory, self._stop.is_set):
+            result = self._backend.scan(
+                model_content=model_content,
+                model_metadata=dict(model_row),
+                snapshot=snapshot,
+                archive=self._archive,
+                after_source_cursor=pipeline["scan_cursor"],
+                region=_region_from_row(pipeline),
+                progress=progress,
+                interrupted=self._stop.is_set,
+            )
         _validate_scan_result(result)
         self._assert_running()
         completed = _aware_utc(self._clock(), "spatial monitor clock")

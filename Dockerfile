@@ -17,7 +17,7 @@ COPY src ./src
 RUN python -m pip install \
         --index-url https://download.pytorch.org/whl/cpu \
         "torch>=2.5,<3" \
-    && python -m pip install ".[data]"
+    && python -m pip install ".[data,shawtynet]"
 
 
 FROM python:3.14-slim-bookworm AS runtime
@@ -32,7 +32,9 @@ ARG APP_GID=1000
 ENV HOME=/home/ophanim \
     PATH="/opt/venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    OMP_NUM_THREADS=2 \
+    OPENBLAS_NUM_THREADS=2
 
 RUN groupadd --gid "${APP_GID}" ophanim \
     && useradd \

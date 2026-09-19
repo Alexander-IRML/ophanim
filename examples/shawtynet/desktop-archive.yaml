@@ -1,0 +1,28 @@
+# Existing acquired CODE maps, read only. No Mamba training required.
+# Paths are relative to this configuration file.
+input:
+  kind: desktop
+  data_directory: ../../var/desktop
+  bounds:
+    south: 20
+    north: 42
+    west: -112
+    east: -88
+analysis:
+  analysis_mode: retrospective
+  science_spacing_km: 75
+  smooth_sigma_km: 100
+  structure_sigma_km: 200
+  short_window_minutes: 360
+  # SavGol provides fitted edge backgrounds; the desktop UI instead explicitly
+  # targets six hours earlier when using its centered rolling median.
+  baseline_method: savgol
+  baseline_window_minutes: 720
+  wave_window_hours: 24
+  # These are conservative admission limits, not guaranteed source resolution.
+  # Short-period waves remain unsupported for the native hourly GIM sequence.
+  wave:
+    min_period_minutes: 30
+    max_period_minutes: 180
+    minimum_samples_per_period: 6
+    minimum_cycles: 3

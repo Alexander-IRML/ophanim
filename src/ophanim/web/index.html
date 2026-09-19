@@ -6,10 +6,12 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#17243c">
     <meta name="ophanim-token" content="__OPHANIM_TOKEN__">
-    <title>OPHANIM · Ionospheric forecast workspace</title>
+    <title>OPHANIM · Observe, explore, imagine</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
     <script src="/app.js" defer></script>
+    <script src="/shawtynet.js" defer></script>
+    <script src="/workspace.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to workspace</a>
@@ -21,7 +23,7 @@
         </span>
         <span class="brand-copy">
           <strong>OPHANIM</strong>
-          <small>IONOSPHERIC FORECAST LAB</small>
+          <small>OBSERVE · EXPLORE · IMAGINE</small>
         </span>
       </a>
 
@@ -38,6 +40,159 @@
     </header>
 
     <main id="main-content" class="workspace">
+      <nav class="work-tabs" role="tablist" aria-label="Workspace">
+        <button id="tab-discover" type="button" role="tab" aria-selected="true" aria-controls="work-discover" data-work-tab="discover">Discover</button>
+        <button id="tab-event" type="button" role="tab" aria-selected="false" aria-controls="work-event" tabindex="-1" data-work-tab="event">Event Lab</button>
+        <button id="tab-studio" type="button" role="tab" aria-selected="false" aria-controls="work-studio" tabindex="-1" data-work-tab="studio">ShawtyNet Studio</button>
+        <button id="tab-experiments" type="button" role="tab" aria-selected="false" aria-controls="work-experiments" tabindex="-1" data-work-tab="experiments">Experiments</button>
+        <button id="tab-advanced" type="button" role="tab" aria-selected="false" aria-controls="work-advanced" tabindex="-1" data-work-tab="advanced">Advanced</button>
+      </nav>
+      <div id="work-job" class="work-job" role="status" aria-live="polite" hidden>
+        <div><strong id="work-job-title">Working…</strong><span id="work-job-message"></span></div>
+        <progress id="work-progress" aria-label="Job progress"></progress>
+        <button id="work-cancel" class="button button-quiet button-small" type="button">Cancel</button>
+      </div>
+      <p id="work-error" class="work-error" role="alert" hidden></p>
+
+      <section id="work-discover" class="work-view" role="tabpanel" aria-labelledby="tab-discover" tabindex="0">
+        <div class="work-heading">
+          <div><p class="eyebrow">IONOSPHERE / DISCOVER</p><h1>What changed overhead?</h1><p>Pull the latest available TEC maps. Explore the strongest supported changes.</p></div>
+          <button id="work-pull" class="button button-primary" type="button">↓ Pull data &amp; find hotspots</button>
+        </div>
+        <div class="work-discover-grid">
+          <section class="work-card work-map-card" aria-labelledby="work-map-title">
+            <div class="work-card-heading"><h2 id="work-map-title">Native TEC survey</h2><span id="work-map-label" class="work-chip">Waiting for a scan</span></div>
+            <div class="work-map-wrap"><canvas id="work-map" width="960" height="480" role="img" aria-label="Global native-grid TEC survey; scan data to populate this map"></canvas></div>
+            <div class="work-map-footer"><span id="work-map-range">Longitude −180° to 180° · latitude −90° to 90°</span><span id="work-map-legend">Blue: lower · amber: higher</span></div>
+            <p id="work-freshness" class="work-subtle">Daily CODE products, not a live sensor feed. Observation time and source support will appear here.</p>
+            <p class="work-subtle">Outlines mark hotspot footprints across the scanned window, not necessarily at the map's latest timestamp.</p>
+          </section>
+          <section class="work-card work-candidates" aria-labelledby="work-candidates-title">
+            <div class="work-card-heading"><h2 id="work-candidates-title">Worth a closer look</h2><span id="work-count" class="work-chip">0 hotspots</span></div>
+            <p id="work-scan-summary" class="work-subtle">No scan yet. A clear result can contain no hotspots; missing evidence is never treated as quiet.</p>
+            <div id="work-candidate-list"></div>
+          </section>
+        </div>
+        <details class="work-options"><summary>Other sources &amp; scan history</summary>
+          <div class="work-inline"><button id="work-cached" class="button button-secondary button-small" type="button">Analyze cached maps</button><button id="work-demo" class="button button-secondary button-small" type="button">Load labeled synthetic demo</button><label class="field"><span>Saved scan</span><select id="work-history"><option value="">Current scan</option></select></label></div>
+          <p class="work-subtle">A scan checks a bounded recent window. This does not start twenty years of model training. Synthetic demos are never observations.</p>
+        </details>
+        <ul id="work-warnings" class="work-warnings" hidden></ul>
+      </section>
+
+      <section id="work-event" class="work-view" role="tabpanel" aria-labelledby="tab-event" tabindex="0" hidden>
+        <div class="work-heading"><div><p class="eyebrow">OBSERVATIONS / EVENT LAB</p><h1>Follow the evidence.</h1><p>What was measured, what the pattern suggests, and what remains unknown.</p></div><button class="button button-secondary" type="button" data-work-go="discover">← Back to survey</button></div>
+        <div id="work-event-empty" class="work-empty"><h2>Select a hotspot in Discover.</h2><p>The Event Lab keeps source data separate from explanations and hypothetical scenarios.</p></div>
+        <div id="work-event-content" hidden>
+          <div class="work-event-intro"><div><span id="work-event-origin" class="work-chip">OBSERVATIONAL CANDIDATE</span><h2 id="work-event-title"></h2><p id="work-event-time" class="work-subtle"></p></div><div class="work-inline"><button id="work-artify" class="button button-secondary" type="button">Artify observations</button><button id="work-explore" class="button button-primary" type="button">Imagine in 3D →</button></div></div>
+          <dl id="work-event-metrics" class="work-metrics"></dl>
+          <div class="work-two-column">
+            <section class="work-card"><h3>Observed vs expected TEC</h3><canvas id="work-series" width="800" height="300" role="img" aria-label="Selected hotspot observed TEC and historical baseline time series"></canvas><p class="work-subtle">Navy: observed · amber: baseline · gaps remain gaps. TECU is total electron content.</p><details class="work-options"><summary>Read the values</summary><div class="work-table-wrap"><table><caption class="visually-hidden">Hotspot time series</caption><thead><tr><th>UTC</th><th>Observed</th><th>Baseline</th><th>Deviation</th></tr></thead><tbody id="work-series-table"></tbody></table></div></details></section>
+            <section class="work-card"><h3>Pattern &amp; possible explanations</h3><p class="work-subtle">These are hypotheses, not confirmed diagnoses or probability estimates.</p><div id="work-hypotheses"></div></section>
+          </div>
+          <section class="work-card work-evidence"><h3>Source footprint &amp; limits</h3><canvas id="work-footprint" width="900" height="260" role="img" aria-label="Selected hotspot footprint in latitude and longitude"></canvas><p id="work-event-support"></p><p>Observed TEC is a gridded source product. Smaller display pixels do not add measurements. Apparent feature motion is not plasma velocity.</p><details class="work-options"><summary>Evidence and source identifiers</summary><pre id="work-event-provenance"></pre></details></section>
+        </div>
+      </section>
+
+      <section id="work-studio" class="work-view" role="tabpanel" aria-labelledby="tab-studio" tabindex="0" hidden>
+        <div class="work-heading"><div><p class="eyebrow">SHAWTYNET / STUDIO</p><h1>Turn a question into a scene.</h1><p>Keep the observations. Choose the experiment. Shape the art.</p></div><label class="field work-project-picker"><span>Saved project</span><select id="work-projects"><option value="">New imagined event</option></select></label></div>
+        <p id="work-scenario-context" class="work-disclosure">IMAGINED 3D EVENT · Evidence inspires a hypothesis; assumed mechanics create the structure. Not a recovered view of the ionosphere. IFM comes in v0.3.</p>
+        <div class="work-studio-grid">
+          <form id="work-scenario-form" class="work-card">
+            <h2>Imagine the event</h2>
+            <label class="field"><span>Modeling space</span><select id="work-model-mode"><option value="imagined_3d">3D imagination</option><option value="scenario">2D science sandbox · advanced</option></select></label>
+            <fieldset id="work-3d-fields" class="work-recipe-fields">
+              <legend class="visually-hidden">Imagined 3D hypothesis</legend>
+              <label class="field"><span>One possible shape, not a diagnosis</span><select id="work-imagine-kind"><option value="auto">Propose from evidence / illustrative fallback</option><option value="wave_packet">Folded wave ribbons</option><option value="front">Corrugated front curtains</option><option value="sheared_jet">Twisting jet bundle</option></select></label>
+              <label class="field"><span>Variation seed</span><input id="work-imagine-seed" type="number" min="0" max="4294967295" step="1" value="42" required></label>
+              <p class="work-subtle">A real 3D grid evolving through 12 timestamps. Depth, motion and fine structure are imagined; color is art direction. Missing scientific motion does not prevent an imagined scene.</p>
+              <details class="work-options"><summary>Override the imagined mechanics</summary><div class="work-fields">
+                <label class="field"><span>Width · km</span><input id="work-imagine-width" type="number" min="20" max="500" step="any" placeholder="Automatic"></label>
+                <label class="field"><span>Speed · m/s</span><input id="work-imagine-speed" type="number" min="0" max="600" step="any" placeholder="Automatic"></label>
+                <label class="field"><span>Bearing · °</span><input id="work-imagine-bearing" type="number" min="0" max="360" step="any" placeholder="Automatic"></label>
+                <label class="field"><span>Period · minutes</span><input id="work-imagine-period" type="number" min="5" max="240" step="any" placeholder="Automatic"></label>
+              </div><p class="work-subtle">Blank values use the proposal. Every override is recorded as chosen. Synthetic density is dimensionless, not TECU or measured electron density.</p></details>
+            </fieldset>
+            <fieldset id="work-2d-fields" class="work-recipe-fields" hidden disabled>
+            <legend class="visually-hidden">Advanced 2D scenario</legend>
+            <label class="field"><span>Pattern <small>chosen</small></span><select id="work-kind"><option value="wave_packet">Wave packet</option><option value="translating_gaussian">Moving feature</option><option value="growing_gaussian">Growing feature</option><option value="localized_depletion">Localized depletion</option><option value="moving_front">Front</option><option value="quiet">Quiet field</option></select></label>
+            <div class="work-fields">
+              <label class="field"><span>Amplitude · TECU <small id="work-amplitude-provenance">chosen</small></span><input id="work-amplitude" type="number" min="0" max="50" step="any" value="3" required></label>
+              <label class="field"><span>Width · km <small>chosen</small></span><input id="work-width" type="number" min="5" max="1000" step="any" value="150" required></label>
+              <label class="field"><span>Speed · m/s <small>chosen</small></span><input id="work-speed" type="number" min="0" max="500" step="any" value="100" required></label>
+              <label class="field"><span>Bearing · ° <small>chosen</small></span><input id="work-bearing" type="number" min="0" max="360" step="any" value="90" required></label>
+              <label class="field"><span>Period · minutes <small>chosen</small></span><input id="work-period" type="number" min="10" max="720" step="any" value="60" required></label>
+              <label class="field"><span>Extent · km <small>chosen</small></span><input id="work-extent" type="number" min="50" max="2000" step="any" value="1000" required></label>
+            </div>
+            <details class="work-options"><summary>Simulation &amp; location settings</summary><div class="work-fields">
+              <label class="field"><span>Duration · minutes</span><input id="work-duration" type="number" min="10" max="720" step="any" value="240" required></label>
+              <label class="field"><span>Spacing · km</span><input id="work-spacing" type="number" min="2" max="100" step="any" value="25" required></label>
+              <label class="field"><span>Seed</span><input id="work-seed" type="number" min="0" max="4294967295" step="1" value="42" required></label>
+              <label class="field"><span>Center latitude <small id="work-latitude-provenance">chosen</small></span><input id="work-latitude" type="number" min="-90" max="90" step="any" value="30" required></label>
+              <label class="field"><span>Center longitude <small id="work-longitude-provenance">chosen</small></span><input id="work-longitude" type="number" min="-180" max="180" step="any" value="-98" required></label>
+            </div><p class="work-subtle">The source location may seed the center. Other parameters remain explicit assumptions; a finer synthetic grid is not recovered observation detail.</p></details>
+            </fieldset>
+            <label class="field"><span>Artistic style</span><select id="work-style"><option value="ghost">Ghost atmospheric</option><option value="luminous" selected>Luminous</option><option value="quiet">Quiet veil</option></select></label>
+            <details class="work-options"><summary>Camera · artistic choices</summary>
+            <label id="work-camera-auto-label" class="work-subtle"><input id="work-camera-auto" type="checkbox" checked> Automatically frame the 3D structure</label>
+            <div class="work-fields">
+              <label class="field"><span>Heading · °</span><input id="work-camera-heading" type="number" min="-360" max="360" step="1" value="0" required></label>
+              <label class="field"><span>Pitch · °</span><input id="work-camera-pitch" type="number" min="-90" max="90" step="1" value="70" required></label>
+              <label class="field"><span>Roll · °</span><input id="work-camera-roll" type="number" min="-180" max="180" step="1" value="0" required></label>
+              <label class="field"><span>Horizontal FOV · °</span><input id="work-camera-fov" type="number" min="10" max="150" step="1" value="70" required></label>
+              <label class="field"><span>Observer latitude · °</span><input id="work-camera-latitude" type="number" min="-90" max="90" step="any" placeholder="Automatic: scene center"></label>
+              <label class="field"><span>Observer longitude · °</span><input id="work-camera-longitude" type="number" min="-180" max="180" step="any" placeholder="Automatic: scene center"></label>
+              <label class="field"><span>Observer altitude · km</span><input id="work-camera-altitude" type="number" min="-1" max="1000" step="any" value="0" required></label>
+            </div><p id="work-camera-note" class="work-subtle">3D uses an automatically distanced orbit, not a calibrated ground observer. Uncheck automatic framing to choose heading, pitch, roll and FOV.</p></details>
+            <p id="work-budget" class="work-subtle" role="status">Bounded local 3D experiment</p>
+            <button id="work-create" class="button button-primary" type="submit">Imagine in 3D &amp; preview</button>
+          </form>
+          <section class="work-card work-preview-card" aria-labelledby="work-preview-title">
+            <div class="work-card-heading"><h2 id="work-preview-title">Your scene</h2><span id="work-project-kind" class="work-chip">Not generated</span></div>
+            <div id="work-preview-empty" class="work-empty"><span class="work-orbit" aria-hidden="true">◎</span><h3>Let the hypothesis take shape.</h3><p>Choose a hotspot or start with an imagined event. Generate a 3D preview, then render its ribbons and filaments with Blender.</p></div>
+            <figure id="work-preview-figure" class="work-preview-figure" hidden><img id="work-preview-image" alt="Artistic representation of the selected event or imagined 3D hypothesis"><figcaption id="work-preview-caption"></figcaption></figure>
+            <div id="work-project-actions" hidden>
+              <div class="work-inline"><button id="work-restyle" class="button button-secondary" type="button">Apply style &amp; camera</button><button id="work-render" class="button button-primary" type="button">Render with Blender</button></div>
+              <p id="work-render-note" class="work-subtle"></p>
+              <p id="work-analysis-note" class="work-subtle" role="status"></p>
+              <div id="work-project-links" class="work-inline"></div>
+              <details class="work-options"><summary>Animate a short sequence</summary>
+                <p class="work-subtle">An optional, bounded Blender job. Time evolution follows the selected scientific or hypothetical field; appearance remains artistic.</p>
+                <div class="work-inline"><label class="field"><span>Frames · 3–12</span><input id="work-animation-frames" type="number" min="3" max="12" step="1" value="6"></label><button id="work-animate" class="button button-secondary button-small" type="button">Render short animation</button></div>
+              </details>
+              <details class="work-options"><summary>Overlay on a local photograph</summary>
+                <p class="work-subtle">Manual artistic alignment, not a reconstruction of what a camera observed. Render a frame first. The photo and optional masks are center-cropped together, never stretched. No automatic calibration or segmentation. Images stay in the local workspace.</p>
+                <label class="field"><span>PNG or JPEG · up to 8 MiB</span><input id="work-photo" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg"></label>
+                <div class="work-inline"><label class="field"><span>Overlay opacity · <output id="work-opacity-label" for="work-photo-opacity">0.65</output></span><input id="work-photo-opacity" type="range" min="0" max="1" step="0.05" value="0.65"></label><button id="work-composite" class="button button-secondary button-small" type="button">Create photo overlay</button></div>
+                <details class="work-options"><summary>Horizon, atmosphere &amp; color grade</summary><div class="work-fields">
+                  <label class="field"><span>Horizon · 0 top, 1 bottom</span><input id="work-photo-horizon" type="number" min="0.001" max="1" step="any" value="0.5" required></label>
+                  <label class="field"><span>Horizon fade · fraction of image</span><input id="work-photo-fade" type="number" min="0" max="1" step="any" value="0.6" required></label>
+                  <label class="field"><span>Overlay saturation</span><input id="work-photo-saturation" type="number" min="0" max="2" step="any" value="0.85" required></label>
+                  <label class="field"><span>Overlay exposure · gain</span><input id="work-photo-exposure" type="number" min="0" max="4" step="any" value="1" required></label>
+                  <label class="field"><span>Red gain</span><input id="work-photo-red" type="number" min="0" max="2" step="any" value="1" required></label>
+                  <label class="field"><span>Green gain</span><input id="work-photo-green" type="number" min="0" max="2" step="any" value="1" required></label>
+                  <label class="field"><span>Blue gain</span><input id="work-photo-blue" type="number" min="0" max="2" step="any" value="1" required></label>
+                </div></details>
+                <details class="work-options"><summary>Manual foreground &amp; cloud masks</summary>
+                  <p class="work-subtle">Optional PNG/JPEG masks, each up to 8 MiB and matching the original oriented photo dimensions. White blocks the overlay; black leaves it visible; gray partially occludes it.</p>
+                  <label class="field"><span>Foreground mask</span><input id="work-foreground-mask" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg"></label>
+                  <label class="field"><span>Cloud mask</span><input id="work-cloud-mask" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg"></label>
+                </details>
+                <p id="work-photo-note" class="work-subtle">Requires a rendered project. Choose only photographs you have permission to use.</p>
+              </details>
+              <details class="work-options"><summary>Parameter provenance &amp; recipe</summary><pre id="work-project-provenance"></pre></details>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="work-experiments" class="work-view" role="tabpanel" aria-labelledby="tab-experiments" tabindex="0" hidden>
+        <p class="work-disclosure">IFM is reserved for v0.3. Current 3D imagination runs locally; remote simulation is not configured and uploads nothing automatically.</p>
+        <div class="work-heading"><div><p class="eyebrow">RESEARCH / EXTENSION BOUNDARY</p><h1>A place for the next experiment.</h1><p>Novel models and agent training stay separate from the operational survey.</p></div><span class="work-chip">Not configured</span></div>
+        <div class="work-card"><h2>Bring an experiment, keep the evidence.</h2><p>This workspace reserves a clean interface for research. It does not imply that a new model or learning agent has been trained.</p><div class="work-experiment-grid"><article><h3>Inputs</h3><p>Versioned native datasets and explicit train, validation, calibration and test splits.</p></article><article><h3>Methods</h3><p>Pluggable experiment adapters, reproducible parameters, seeds and checkpoint references.</p></article><article><h3>Evaluation</h3><p>Declared metrics, source-aware support, held-out comparisons and provenance-linked results.</p></article></div><p class="work-subtle">Existing Mamba-inspired and ConvLSTM research controls are preserved under Advanced. They are optional; training is never a hidden prerequisite for pulling data.</p><button class="button button-secondary" type="button" data-work-go="advanced">Open advanced research tools</button></div>
+      </section>
+
+      <section id="work-advanced" class="work-view work-legacy" role="tabpanel" aria-labelledby="tab-advanced" tabindex="0" hidden>
       <section class="intro" aria-labelledby="page-title">
         <div>
           <p class="eyebrow">Local experiment</p>
@@ -808,6 +963,78 @@
         </details>
       </section>
 
+      <section class="panel shawtynet-panel" id="shawtynet-panel" aria-labelledby="shawtynet-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="section-number">RESEARCH / SHAWTYNET</p>
+            <h2 id="shawtynet-heading">From sensing to visual fields</h2>
+          </div>
+          <p>Inspect TEC structure and apparent motion, then explore an artistic interpretation of the evidence.</p>
+        </div>
+        <div class="shawtynet-controls">
+          <div class="shawtynet-action-card">
+            <h3>Synthetic science sandbox</h3>
+            <p>Known simulated patterns make the motion and wave diagnostics inspectable.</p>
+            <label class="field" for="shawtynet-case">
+              <span>Example</span>
+              <select id="shawtynet-case">
+                <option value="plane_wave">Traveling plane wave</option>
+                <option value="translating_gaussian">Moving Gaussian feature</option>
+                <option value="growing_gaussian">Stationary growing feature</option>
+                <option value="translating_growing_gaussian">Moving and growing feature</option>
+                <option value="wave_packet">Finite wave packet</option>
+                <option value="moving_front">Moving front</option>
+                <option value="crossing_waves">Crossing waves</option>
+                <option value="quiet">Quiet field</option>
+                <option value="noise">Noisy field</option>
+                <option value="missing">Missing observations</option>
+              </select>
+            </label>
+            <button class="button button-secondary" id="shawtynet-demo" type="button">Run synthetic example</button>
+          </div>
+          <div class="shawtynet-action-card">
+            <h3>Acquired TEC</h3>
+            <p>Use the latest four days available in this laptop's source archive. Retrospective analysis centers six hours before the latest map so the background can use both sides.</p>
+            <details class="shawtynet-region">
+              <summary>Analysis region · broad Texas region</summary>
+              <div class="field-pair">
+                <label class="field"><span>South latitude</span><input id="shawtynet-south" type="number" min="-75" max="75" step="0.5" value="20"></label>
+                <label class="field"><span>North latitude</span><input id="shawtynet-north" type="number" min="-75" max="75" step="0.5" value="42"></label>
+              </div>
+              <div class="field-pair">
+                <label class="field"><span>West longitude</span><input id="shawtynet-west" type="number" min="-180" max="180" step="0.5" value="-112"></label>
+                <label class="field"><span>East longitude</span><input id="shawtynet-east" type="number" min="-180" max="180" step="0.5" value="-88"></label>
+              </div>
+              <p class="field-hint">Use a broad region to include several native source cells. Finer display spacing adds no observations.</p>
+            </details>
+            <button class="button button-primary" id="shawtynet-acquired" type="button">Analyze acquired TEC</button>
+          </div>
+        </div>
+        <p class="shawtynet-status" id="shawtynet-status" role="status" aria-live="polite">Checking research tools…</p>
+        <p class="shawtynet-error" id="shawtynet-error" role="alert" hidden></p>
+        <div class="shawtynet-result" id="shawtynet-result" hidden>
+          <div>
+            <p class="section-number" id="shawtynet-result-origin">SCIENTIFIC EVIDENCE</p>
+            <h3 id="shawtynet-result-title">Analysis ready</h3>
+            <p id="shawtynet-result-time"></p>
+            <dl class="metric-row">
+              <div><dt>Apparent motion</dt><dd id="shawtynet-flow-state">—</dd></div>
+              <div><dt>Wave evidence</dt><dd id="shawtynet-wave-state">—</dd></div>
+            </dl>
+            <p class="field-hint">Unsupported or uncertain channels remain explicit. Event scores are experimental, and feature motion is not plasma velocity.</p>
+            <div class="shawtynet-links">
+              <a id="shawtynet-science-link" class="button button-secondary" target="_blank" rel="noopener">Science diagnostics</a>
+              <a id="shawtynet-visual-link" class="button button-secondary" target="_blank" rel="noopener">Artistic field diagnostics</a>
+            </div>
+          </div>
+          <figure class="shawtynet-preview">
+            <img id="shawtynet-preview" alt="Artistic color mapping of the analyzed structure" loading="lazy">
+            <figcaption>Artistic color-field preview · Blender-ready assets are saved with this run.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      </section>
       <footer class="page-footer">
         <span>OPHANIM v0 · Local experimental software</span>
         <span>Processing, stored data, and results remain on this laptop</span>

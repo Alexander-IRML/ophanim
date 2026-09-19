@@ -550,6 +550,19 @@ class SpatialMonitorTests(unittest.TestCase):
         self.assertTrue(self.monitor.run_next_job())
         return self.monitor.status()
 
+    def test_shared_compute_cancellation_is_interrupted_not_failed(self) -> None:
+        from ophanim.core.jobs import WorkCancelled
+        queued = self.monitor.initialize({"history_years": 1})
+        job_id = queued["active_job"]["job_id"]
+        with patch.object(self.monitor, "_run_initialize", side_effect=WorkCancelled("waiting cancelled")):
+            self.assertTrue(self.monitor.run_next_job())
+        with self.monitor._connection() as connection:
+            job = connection.execute("SELECT status,retryable,error_message FROM jobs WHERE job_id=?", (job_id,)).fetchone()
+        self.assertEqual(job["status"], "interrupted")
+        self.assertEqual(job["retryable"], 1)
+        self.assertIsNone(job["error_message"])
+        self.assertIsNone(self.monitor.status()["model"])
+
     def test_initialization_freezes_snapshot_and_publishes_durable_model(self) -> None:
         initial = self.monitor.status()
         self.assertTrue(initial["available"])

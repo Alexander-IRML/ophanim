@@ -1,13 +1,37 @@
 # OPHANIM
 
-OPHANIM is an experimental pipeline for turning regional ionospheric TEC
-observations into forecasts and disturbance assessments.
+OPHANIM is a local research application for finding supported changes in
+ionospheric TEC, inspecting the evidence, and exploring explicitly hypothetical
+scenarios and artistic interpretations.
 
-> **Research software:** v0.1.0 produces anomaly candidates for experiment and
+The main workspace follows **Discover → Event Lab → ShawtyNet Studio**. Model
+training, forecasting and manual data controls remain available under Advanced;
+they are not prerequisites for the main scan. See the [subsystem boundaries](docs/subsystems.md)
+and [scientific/artistic workflow and limitations](docs/shawtynet.md).
+
+Studio now defaults to **3D imagination**: choose a hotspot-inspired hypothesis
+(or an independent idea), evolve a seeded 3D material field, and preview or render
+folded ribbons, curtains and jet bundles. This is imagined structure, not a TEC
+tomographic reconstruction. The original 2D sandbox remains an advanced modeling
+choice. **IFM is reserved for v0.3** in the [roadmap](ROADMAP.md); remote simulation
+is not enabled. See [the 3D workflow](docs/imagined-3d.md) and
+[remote-execution safeguards](docs/simulation-security.md).
+
+> **Research software:** v0.2.0 produces anomaly candidates for experiment and
 > review. It is not an operational space-weather warning service, and model
 > agreement is not confirmation of a physical disturbance.
 
-The v0.1.0 deployment has a dependency-free Python implementation of the first
+The discovery workflow downloads a bounded recent CODE window, or uses retained
+native sources, compares cells with a past-days same-UTC reference, and groups
+persistent changes into at most three distinct candidate regions. It can return
+no candidates or insufficient evidence. Location, time, source support and
+possible explanations stay attached to each candidate; those explanations are
+not physical diagnoses. Optional NOAA planetary Kp context is matched to the
+event's UTC intervals and never upgrades an association into a confirmed cause.
+Finer synthetic scenes and art remain separate from
+the original observations.
+
+The existing v0.1.0 foundations include a dependency-free Python implementation of the first
 local vertical slice, a CPU selective-state-space abnormality monitor, a causal
 spatial ConvLSTM baseline, and a containerized bulk-data plane. It parses
 two-dimensional IONEX v1 products, stores operational provenance and
@@ -21,7 +45,24 @@ only publications after its last successful scan cursor. The ConvLSTM reuses
 those same immutable native grids to predict each next two-hour map and retain
 spatial residual evidence for side-by-side comparison.
 
-## Core flow
+## Discovery and creative workflow
+
+```text
+Pull recent native TEC / read retained sources / open a labeled synthetic demo
+    → source support and past-days reference checks
+    → group persistent native-cell changes into a few candidate events
+    → inspect evidence, alternatives, limitations and source times
+    → create a hypothetical scenario OR artistically map observed structure
+    → revise style/camera, render a frame, export a reproducible scene
+```
+
+The reusable core, independent experiments, and downstream ShawtyNet art are
+modules in one application, not separately deployed services. The composition
+layer records links between immutable source snapshots, candidate events,
+scenario recipes and artistic projects. Experiment/agent extension interfaces
+exist, but no new learning agent or general benchmark runner is configured.
+
+## Forecasting and bulk-data flows
 
 ```text
 CODE GIM download or local IONEX source
@@ -84,6 +125,17 @@ src/ophanim/
 ├── tec_archive.py    Immutable native and derived Zarr v3 grids
 ├── postgres_catalog.py PostgreSQL grid discovery and lineage catalog
 ├── data_cli.py       Bulk-data initialization and status commands
+├── core/             Model-independent acquisition/discovery, model contracts,
+│                    native mapping, scientific runs and shared compute gate
+├── sensing/          Read-only native observations, revisions, RMS and support
+├── dynamics/         Reusable TEC structure, apparent motion, waves and events
+├── experiments/      Hypothetical scenarios, known-truth tests, evaluation contracts
+├── shawtynet/        Downstream artistic runs, Blender and photo compositing
+├── science_runs.py   Lazy compatibility facade for the previous stage APIs
+├── science_reports.py Inspectable numerical and artistic diagnostics
+├── shawtynet_cli.py  Independent research-pipeline commands
+├── shawtynet_desktop.py Preserved advanced research jobs and verified reports
+├── workspace.py      Durable scan/event/scenario/project application handoffs
 ├── workflows.py      End-to-end application orchestration boundary
 ├── desktop.py        Loopback-only desktop web server and UI adapter
 ├── sql/postgres/     Versioned PostgreSQL catalog migrations
@@ -132,29 +184,62 @@ cannot be started, the launcher falls back to the Windows default browser. Use
 **Stop application** in the workspace, or close the launcher window, when
 finished.
 
-The desktop workflow is deliberately simple:
+The primary workflow is:
 
-1. Click **Download & inspect GIM** to use the latest CODE rapid product, optionally
-   choose a final/exact-date product, or switch to a local IONEX file. The
-   Central Texas crop remains editable.
-2. Generate a fine regional readout for any loaded epoch and download its table
-   as CSV if useful.
-3. Optionally initialize the independent 20-year Mamba monitor. The background
-   job saves one checkpoint per UTC day and resumes after restart.
-4. Once ready, use **Check new readouts** to download and score data since the
-   last successful check.
-5. In Docker mode, train the **Predictive ConvLSTM monitor** from those archived
-   native maps, then use **Check & compare** for localized residual evidence.
-6. Choose a forecast origin, mean or median VTEC, horizon, and run mode.
-7. Run the persistence forecast and inspect the separate forecast-anomaly and
-   physical-disturbance assessments.
-8. Use **Check pending** later when a forecast did not yet have an actual at its
-   valid time.
+1. In **Discover**, click **Pull data & find hotspots**. The scan runs in the
+   background over a bounded recent window; it does not initialize historical
+   models. The native map shows observation time and source spacing. Retained
+   data and a clearly labeled synthetic demo are available separately.
+2. Select a candidate in **Event Lab** to inspect its footprint, time series,
+   deviation, source support, alternative explanations and limitations. A scan
+   may correctly report no supported candidates or insufficient history.
+3. Create an editable hypothetical scenario in **ShawtyNet Studio**, or artify
+   supported observed structure. Source-derived estimates and chosen parameters
+   stay distinct. Fine scenario spacing is not recovered observational detail.
+4. Preview artistic fields, choose a style and manual camera, optionally render
+   a frame with Blender, and export the scene or recipe. Completed scientific
+   results are reused when changing only artistic choices.
+
+Studio also supports bounded **3–12-frame artistic animations** and manual
+photo compositing. New projects store independently assessed event/wave states
+at selected timestamps; unsupported intervals are not filled by copying a single
+interpretation. Older projects require reanalysis for animation. Playback is
+uniform and artistic, not a physical time scale. Photo uploads stay local, accept
+single-frame PNG/JPEG up to 8 MiB and 12 megapixels, and strip metadata after
+applying EXIF orientation. The convenience overlay center-crops the photo and
+uses a smooth artistic horizon fade. Expandable Studio controls expose observer
+location/altitude, heading/pitch/roll/FOV, horizon, fade, saturation, exposure,
+RGB grade and optional foreground/cloud masks. Masks must match the original
+oriented photograph; white occludes the art and black reveals it. The system
+does not automatically solve the camera or identify foreground objects.
+
+The [V1 alignment record](docs/shawtynet-v1-alignment.md) documents the strengthened
+motion/wave/morphology calculations, validated state adapters, six-state rendered
+gallery and acceptance limits. In particular, unknown source uncertainty and
+correlated errors can still undermine apparent-motion inference; confidence
+scores are not calibrated probabilities or verified physical diagnoses.
+
+**Experiments** explains the independent research extension boundary; novel
+model adapters and agent training are explicitly unconfigured. **Advanced**
+preserves the earlier exact-date/local-IONEX inspection, interpolated regional
+tables, Mamba initialization/scanning, ConvLSTM training/comparison, forecasting,
+pending reconciliation and detailed research controls. The two model baselines
+remain independent research tools, not an automatic causal diagnosis engine.
+
+Jobs keep durable status and completed results. Cancellation is cooperative at
+safe stage boundaries; after a restart, interrupted workspace requests can be
+retried without overwriting completed immutable stages. Heavy scientific/model
+work shares a per-data-directory compute slot; previews use one frame, and
+hypothetical scenarios are capped at 200,000 space-time cells.
 
 All computation and durable state stay local. Automatic mode downloads the
 source over restricted HTTPS from CODE at the University of Bern; local-file
 mode never sends the selected file anywhere. The SQLite database, immutable
-artifacts, and uploaded source cache live under `var/desktop/`. Pending
+artifacts, and uploaded source cache live under `var/desktop/`. The independent
+recent-source catalog/cache lives in `var/desktop/core/`; discovery snapshots,
+recipes, projects and their job ledger live in `var/desktop/workspace/`. This
+workflow needs the optional scientific dependencies but not Docker or trained
+models. The legacy forecast/model stores remain intact. Pending
 forecasts retain their detector configuration across application restarts, so
 a later IONEX file can be loaded and reconciled without changing the original
 experiment. To launch the same application from a WSL terminal, run:
@@ -216,7 +301,7 @@ catalog, Zarr volume, and referenced immutable source artifacts together.
 
 | Store | Owns | Does not own |
 | --- | --- | --- |
-| SQLite + artifact files | Current ingestion, forecasts, decisions, native-cell queries, Mamba jobs/readouts/models, and original source bytes | The scalable bulk-grid catalog |
+| SQLite + artifact files | Ingestion, recent-source indexes/cache, forecasts, decisions, model jobs, workspace events/scenarios/projects, and original source bytes | The scalable bulk-grid catalog |
 | PostgreSQL `ophanim` schema | Source provenance, grid manifests, epoch timestamps/statistics, checksums, and searchable indexes | Millions of individual TEC cells |
 | Zarr | Dense native measurements and derived 0.5° core estimates, coordinates, presence masks, and source quality masks | Forecast lifecycle or catalog transactions |
 
@@ -410,7 +495,7 @@ candidates and compares matching timestamps with the regional Mamba result.
 Either model can flag a candidate independently; agreement is supporting
 evidence, not a `CONFIRMED` disturbance. PyTorch is optional for the native
 application (`pip install ".[spatial]"`) and is included as a CPU runtime in the
-v0.1.0 Docker image.
+v0.2.0 Docker image.
 
 The comparison is allowed only when both models use identical region bounds.
 It reads persisted Mamba scores for the spatial run's exact time interval, so a
@@ -587,6 +672,24 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
 ## Deliberate v0 limits
+
+- Discovery is experimental screening using a short same-time reference, not a
+  calibrated physical-event detector. Source delays, incomplete history,
+  correlated GIM errors and ordinary variability remain visible limitations.
+  A native hotspot cannot establish its physical cause or resolve sub-grid
+  structure. Optional NOAA planetary Kp context is global and coarse in time;
+  missing or out-of-window data is unavailable, not evidence of quiet conditions.
+  It does not change candidate detection/ranking or establish a local cause.
+  Solar-wind and independent local-GNSS corroboration are not implemented.
+- Scenarios are mathematical TEC fields, not physical ionosphere simulations or
+  reconstructions of an observed event. The independent model/agent protocols
+  are extension contracts, not implemented training or benchmark execution.
+- Studio animation and photo compositing remain artistic previews. Camera
+  alignment is manual, apparent motion is not plasma velocity, and a photographic
+  overlay does not show otherwise invisible TEC as an actual optical observation.
+- The new recent-source cache is independent of model training; the older
+  Mamba/ConvLSTM historical acquisition ledgers and bulk archive are preserved.
+  This is not yet a complete migration of every source store to one catalog.
 
 - Automatic CODE discovery supports public final/rapid products from 2002,
   including legacy `.Z` and modern `.INX.gz` files. CDDIS/Earthdata

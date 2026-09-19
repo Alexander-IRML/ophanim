@@ -78,6 +78,11 @@ from ophanim.spatial_monitor import (
     SpatialMonitorConflict,
     SpatialMonitorUnavailable,
 )
+from ophanim.shawtynet_desktop import (
+    ShawtyNetBusy,
+    ShawtyNetDesktopJobs,
+    ShawtyNetUnavailable,
+)
 from ophanim.sqlite import SQLiteUnitOfWork
 from ophanim.tec_archive import (
     BulkTECArchive,
@@ -86,6 +91,7 @@ from ophanim.tec_archive import (
     standard_gim_grid_definition,
 )
 from ophanim.workflows import AggregationSummary
+from ophanim.workspace import Workspace, WorkspaceBusy, WorkspaceUnavailable
 
 
 APPLICATION_ID = "ophanim-desktop"
@@ -147,6 +153,8 @@ class DesktopController:
         bulk_archive: BulkTECArchive | None = None,
         mamba_monitor: MambaMonitor | None = None,
         spatial_monitor: SpatialMonitor | None = None,
+        shawtynet_jobs: ShawtyNetDesktopJobs | None = None,
+        workspace: Workspace | None = None,
     ) -> None:
         self._data_directory = Path(data_directory).expanduser().resolve()
         self._database = self._data_directory / "ophanim.sqlite3"
@@ -159,6 +167,8 @@ class DesktopController:
         self._bulk_archive = bulk_archive
         self._mamba_monitor = mamba_monitor
         self._spatial_monitor = spatial_monitor
+        self._shawtynet_jobs = shawtynet_jobs
+        self._workspace = workspace
         self._operation_lock = threading.RLock()
         self._loaded: LoadedDataset | None = None
         self._last_result: dict[str, Any] | None = None
@@ -447,6 +457,10 @@ class DesktopController:
     def close(self) -> None:
         """Release optional external data-plane resources."""
 
+        if self._workspace is not None:
+            self._workspace.close()
+        if self._shawtynet_jobs is not None:
+            self._shawtynet_jobs.close()
         if self._spatial_monitor is not None:
             if self._spatial_monitor.close() is False:
                 # A still-running spatial worker owns both dependencies.  Leave
@@ -457,6 +471,51 @@ class DesktopController:
                 return
         if self._bulk_archive is not None:
             self._bulk_archive.close()
+
+    def _get_shawtynet_jobs(self) -> ShawtyNetDesktopJobs:
+        with self._operation_lock:
+            if self._shawtynet_jobs is None:
+                self._shawtynet_jobs = ShawtyNetDesktopJobs(self._data_directory)
+            return self._shawtynet_jobs
+
+    def _get_workspace(self) -> Workspace:
+        with self._operation_lock:
+            if self._workspace is None:
+                self._workspace = Workspace(self._data_directory, source=self._gim_source)
+            return self._workspace
+
+    def workspace_status(self) -> dict[str, Any]:
+        return self._get_workspace().status()
+
+    def workspace_submit(self, kind: str, config: dict[str, Any]) -> dict[str, Any]:
+        return self._get_workspace().submit(kind, config)
+
+    def workspace_cancel(self, config: dict[str, Any]) -> dict[str, Any]:
+        if set(config) - {"job_id"}:
+            raise DesktopInputError("Cancel accepts only the selected job identifier")
+        return self._get_workspace().cancel(config.get("job_id"))
+
+    def workspace_record(self, identity: str, kind: str) -> dict[str, Any]:
+        workspace = self._get_workspace()
+        return {"ok": True, kind: workspace.candidate(identity) if kind == "event" else workspace.record(identity, kind)}
+
+    def workspace_asset(self, relative_url: str) -> tuple[bytes, str]:
+        return self._get_workspace().asset(relative_url)
+
+    def workspace_photo(self, content: bytes) -> dict[str, Any]:
+        return self._get_workspace().upload_photo(content)
+
+    def workspace_mask(self, content: bytes) -> dict[str, Any]:
+        return self._get_workspace().upload_mask(content)
+
+    def shawtynet_status(self) -> dict[str, Any]:
+        return self._get_shawtynet_jobs().status()
+
+    def analyze_shawtynet(self, config: dict[str, Any]) -> dict[str, Any]:
+        return self._get_shawtynet_jobs().analyze(config)
+
+    def shawtynet_asset(self, relative_url: str) -> tuple[bytes, str]:
+        return self._get_shawtynet_jobs().asset(relative_url)
 
     def mamba_status(self) -> dict[str, Any]:
         """Return the independent historical anomaly-monitor status."""
@@ -1155,11 +1214,34 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/api/state":
                 self._send_json(self.server.controller.state())
                 return
+            if parsed.path == "/api/workspace":
+                self._send_json(self.server.controller.workspace_status())
+                return
+            if parsed.path.startswith("/api/workspace/scans/"):
+                self._send_json(self.server.controller.workspace_record(parsed.path.removeprefix("/api/workspace/scans/"), "scan"))
+                return
+            if parsed.path.startswith("/api/workspace/events/"):
+                self._send_json(self.server.controller.workspace_record(parsed.path.removeprefix("/api/workspace/events/"), "event"))
+                return
+            if parsed.path.startswith("/workspace-assets/"):
+                content, content_type = self.server.controller.workspace_asset(parsed.path.removeprefix("/workspace-assets/"))
+                self._send_bytes(content, content_type, inline_styles=content_type.startswith("text/html"))
+                return
             if parsed.path == "/api/mamba/status":
                 self._send_json(self.server.controller.mamba_status())
                 return
             if parsed.path == "/api/spatial/status":
                 self._send_json(self.server.controller.spatial_status())
+                return
+            if parsed.path == "/api/shawtynet/status":
+                self._send_json(self.server.controller.shawtynet_status())
+                return
+            if parsed.path.startswith("/shawtynet-assets/"):
+                content, content_type = self.server.controller.shawtynet_asset(
+                    parsed.path.removeprefix("/shawtynet-assets/")
+                )
+                self._send_bytes(content, content_type,
+                                 inline_styles=content_type.startswith("text/html"))
                 return
             if parsed.path in {"/", "/index.html"}:
                 html = _web_asset("index.html").decode("utf-8").replace(
@@ -1180,6 +1262,12 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
                     "text/javascript; charset=utf-8",
                 )
                 return
+            if parsed.path == "/shawtynet.js":
+                self._send_bytes(_web_asset("shawtynet.js"), "text/javascript; charset=utf-8")
+                return
+            if parsed.path == "/workspace.js":
+                self._send_bytes(_web_asset("workspace.js"), "text/javascript; charset=utf-8")
+                return
             if parsed.path == "/favicon.svg":
                 self._send_bytes(
                     _web_asset("favicon.svg"),
@@ -1189,9 +1277,9 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": "Not found"}, status=404)
         except ValueError as error:
             self._send_json({"ok": False, "error": str(error)}, status=400)
-        except (MambaMonitorConflict, SpatialMonitorConflict) as error:
+        except (MambaMonitorConflict, SpatialMonitorConflict, ShawtyNetBusy, WorkspaceBusy) as error:
             self._send_json({"ok": False, "error": str(error)}, status=409)
-        except (MambaMonitorUnavailable, SpatialMonitorUnavailable) as error:
+        except (MambaMonitorUnavailable, SpatialMonitorUnavailable, ShawtyNetUnavailable, WorkspaceUnavailable) as error:
             self._send_json({"ok": False, "error": str(error)}, status=503)
         except Exception as error:
             self._handle_exception(error)
@@ -1201,6 +1289,23 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
         try:
             self._require_local_host()
             self._require_mutation_token()
+            if parsed.path in {"/api/workspace/scan", "/api/workspace/scenario", "/api/workspace/imagine", "/api/workspace/artify", "/api/workspace/style", "/api/workspace/render", "/api/workspace/animation", "/api/workspace/composite"}:
+                self._send_json(self.server.controller.workspace_submit(parsed.path.rsplit("/", 1)[1], self._read_json()), status=202)
+                return
+            if parsed.path in {"/api/workspace/photo", "/api/workspace/mask"}:
+                length = self._content_length(maximum=8*1024*1024)
+                content = self.rfile.read(length)
+                if len(content) != length:
+                    raise DesktopInputError("Image upload is incomplete")
+                handler = self.server.controller.workspace_mask if parsed.path.endswith("/mask") else self.server.controller.workspace_photo
+                self._send_json(handler(content), status=201)
+                return
+            if parsed.path == "/api/workspace/cancel":
+                self._send_json(self.server.controller.workspace_cancel(self._read_json()))
+                return
+            if parsed.path == "/api/shawtynet/analyze":
+                self._send_json(self.server.controller.analyze_shawtynet(self._read_json()), status=202)
+                return
             if parsed.path == "/api/gim/fetch":
                 self._send_json(
                     self.server.controller.fetch_gim(self._read_json())
@@ -1292,9 +1397,9 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": str(error)}, status=404)
         except GIMAcquisitionError as error:
             self._send_json({"ok": False, "error": str(error)}, status=502)
-        except (MambaMonitorConflict, SpatialMonitorConflict) as error:
+        except (MambaMonitorConflict, SpatialMonitorConflict, ShawtyNetBusy, WorkspaceBusy) as error:
             self._send_json({"ok": False, "error": str(error)}, status=409)
-        except (MambaMonitorUnavailable, SpatialMonitorUnavailable) as error:
+        except (MambaMonitorUnavailable, SpatialMonitorUnavailable, ShawtyNetUnavailable, WorkspaceUnavailable) as error:
             self._send_json({"ok": False, "error": str(error)}, status=503)
         except ValueError as error:
             self._send_json({"ok": False, "error": str(error)}, status=400)
@@ -1399,6 +1504,7 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
         content_type: str,
         *,
         status: int = 200,
+        inline_styles: bool = False,
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -1409,7 +1515,8 @@ class OphanimRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self'; "
+            "default-src 'self'; script-src 'self'; style-src 'self'"
+            + (" 'unsafe-inline'" if inline_styles else "") + "; "
             "img-src 'self' data:; connect-src 'self'; object-src 'none'; "
             "base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
         )

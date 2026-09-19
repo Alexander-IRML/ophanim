@@ -1,0 +1,25 @@
+# Artistic demonstration only. Synthetic time does not match photo capture time.
+input:
+  kind: synthetic
+  parameters:
+    kind: wave_packet
+    nx: 96
+    ny: 64
+    nt: 49
+    spacing_m: 25000
+    cadence_s: 300
+    wavelength_m: 500000
+    period_s: 3600
+    # Put the synthetic packet in the manually selected west-facing view.
+    bearing_deg: 270
+    velocity_u_m_s: -100
+    sigma_m: 600000
+    amplitude_tecu: 5
+    background_tecu: 20
+analysis:
+  analysis_mode: retrospective
+  projection_center_lat: 32.7751007080078
+  projection_center_lon: -106.316200256348
+  baseline_method: constant
+  constant_background_tecu: 20
+  wave_window_hours: 4

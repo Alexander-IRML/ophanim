@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ophanim"
-version = "0.1.0"
+version = "0.2.0"
 description = "Experimental regional TEC forecasting and disturbance detection"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,10 +25,31 @@ spatial = [
     "numpy>=2.0,<3",
     "torch>=2.5,<3",
 ]
+science = [
+    "numpy>=2.0,<3",
+    "scipy>=1.14,<2",
+    "xarray>=2024.10,<2027",
+    "scikit-image>=0.24,<1",
+    "pyproj>=3.6,<4",
+    "zarr>=3.1,<4",
+    "matplotlib>=3.9,<4",
+]
+shawtynet = [
+    "numpy>=2.0,<3",
+    "scipy>=1.14,<2",
+    "xarray>=2024.10,<2027",
+    "scikit-image>=0.24,<1",
+    "pyproj>=3.6,<4",
+    "zarr>=3.1,<4",
+    "matplotlib>=3.9,<4",
+    "Pillow>=10,<13",
+    "PyYAML>=6,<7",
+]
 
 [project.scripts]
 ophanim-desktop = "ophanim.desktop:main"
 ophanim-data = "ophanim.data_cli:main"
+ophanim-shawtynet = "ophanim.shawtynet_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

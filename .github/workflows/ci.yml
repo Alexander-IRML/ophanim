@@ -12,6 +12,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
     strategy:
       fail-fast: false
       matrix:
@@ -26,7 +29,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.5,<3"
-          python -m pip install ".[data]"
+          python -m pip install ".[data,shawtynet]"
       - name: Run test suite
         run: python -m unittest discover -s tests -v
       - name: Exercise real ConvLSTM training and scan

@@ -1058,7 +1058,7 @@ class MambaMonitor:
                 self._run_initialize(job_id)
             else:
                 self._run_scan(job_id)
-        except _MonitorInterrupted:
+        except (_MonitorInterrupted, InterruptedError):
             self._mark_interrupted(job_id)
         except Exception as error:  # background boundary: persist, never kill server
             self._mark_failed(job_id, error)
@@ -1125,7 +1125,9 @@ class MambaMonitor:
                 f"{maximum_allowed_gap_hours:g} hours"
             )
         samples = _regularize_samples(actual_samples)
-        model = fit_model(samples, threshold=DEFAULT_THRESHOLD)
+        from ophanim.core.jobs import heavy_work
+        with heavy_work(self._directory, self._stop.is_set):
+            model = fit_model(samples, threshold=DEFAULT_THRESHOLD)
         model_bytes = model.to_bytes()
         stored = self._model_store.put(model_bytes, suffix=".json")
         created_at = _aware_utc(self._clock(), "Mamba monitor clock")
@@ -1263,7 +1265,9 @@ class MambaMonitor:
                 replay_actual,
                 anchor=model.anchor_sample,
             )
-            replay_results = model.score_sequence(history=(), targets=replay)
+            from ophanim.core.jobs import heavy_work
+            with heavy_work(self._directory, self._stop.is_set):
+                replay_results = model.score_sequence(history=(), targets=replay)
             by_time = {result.observed_at: result for result in replay_results}
             score_results = [
                 by_time[_parse_datetime(row["observed_at"])] for row in scorable_rows

@@ -1,0 +1,9 @@
+{
+  "observer_latitude": 30.0,
+  "observer_longitude": -100.0,
+  "observer_altitude_km": 0.3,
+  "heading_deg": 0.0,
+  "pitch_deg": 45.0,
+  "roll_deg": 0.0,
+  "horizontal_fov_deg": 70.0
+}

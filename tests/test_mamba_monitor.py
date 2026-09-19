@@ -11,6 +11,7 @@ from hashlib import sha256
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from ophanim.domain import TECObservation
 from ophanim.gim import GIMNotFound, GIMSourceUnavailable
@@ -121,6 +122,19 @@ class MambaMonitorTests(unittest.TestCase):
         self.assertEqual(queued["active_job"]["status"], "queued")
         self.assertTrue(self.monitor.run_next_job())
         return self.monitor.status()
+
+    def test_shared_compute_cancellation_is_interrupted_not_failed(self) -> None:
+        from ophanim.core.jobs import WorkCancelled
+        queued = self.monitor.initialize({"history_years": 1})
+        job_id = queued["active_job"]["job_id"]
+        with patch.object(self.monitor, "_run_initialize", side_effect=WorkCancelled("waiting cancelled")):
+            self.assertTrue(self.monitor.run_next_job())
+        with self.monitor._connection() as connection:
+            job = connection.execute("SELECT status,retryable,error_message FROM jobs WHERE job_id=?", (job_id,)).fetchone()
+        self.assertEqual(job["status"], "interrupted")
+        self.assertEqual(job["retryable"], 1)
+        self.assertIsNone(job["error_message"])
+        self.assertIsNone(self.monitor.status()["model"])
 
     def test_initialization_is_background_shaped_versioned_and_durable(self) -> None:
         self.assertEqual(self.monitor.status()["state"], "uninitialized")

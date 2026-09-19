@@ -8,6 +8,7 @@ __pycache__/
 coverage.xml
 htmlcov/
 .venv/
+.venv-*/
 .env
 .env.*
 !.env.example

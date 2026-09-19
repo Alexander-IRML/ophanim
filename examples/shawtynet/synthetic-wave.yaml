@@ -1,0 +1,20 @@
+# Explicit synthetic truth, not a real observation or a GIM resolution claim.
+input:
+  kind: synthetic
+  parameters:
+    kind: plane_wave
+    nx: 64
+    ny: 64
+    nt: 49
+    spacing_m: 25000
+    cadence_s: 300
+analysis:
+  analysis_mode: retrospective
+  baseline_method: constant
+  constant_background_tecu: 20.0
+  science_spacing_km: 25
+  smooth_sigma_km: 18.75
+  wave_window_hours: 4
+  wave:
+    minimum_samples_per_period: 6
+    minimum_cycles: 3
